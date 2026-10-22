@@ -4,7 +4,7 @@ _Head:
 
 #if REQUIRES_KERNEL_HEADER == 1
 _StackBase:
-  .quad FD_BASE         /* Text Offset */
+  .quad 0               /* Image load offset relative to the bootloader kernel base */
 
 _StackSize:
   .quad (_Payload - _Head) + FD_SIZE /* Shim + FD image size */
