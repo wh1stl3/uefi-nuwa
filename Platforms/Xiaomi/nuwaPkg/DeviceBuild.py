@@ -30,6 +30,8 @@ class CommonPlatform ():
     Scopes = ('nuwa', 'gcc_aarch64_linux', 'edk2-build')
     WorkspaceRoot = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     PackagesPath = (
+        # Symlinks to pinned UniXNU packages; populated only in the build tree.
+        ".unixnu-packages",
         "Platforms/Xiaomi",
         "Common/Mu",
         "Common/Mu_OEM_Sample",

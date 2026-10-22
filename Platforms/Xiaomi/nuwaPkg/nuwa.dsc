@@ -67,6 +67,10 @@
   gQcomPkgTokenSpaceGuid.PcdPlatformType|"LA"
 
 [LibraryClasses]
+  # UniXNU boot manager and DarwinBoot loader libraries.
+  UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
+  FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
+
   #
   # Memory Libraries
   #
@@ -78,6 +82,12 @@
   ConfigurationMapLib|nuwaPkg/Library/ConfigurationMapLib/ConfigurationMapLib.inf
 
 [Components]
+  # Keep registrar and application in the same firmware volume.
+  UniXNUPkg/Application/UniXNU/UniXNU.inf
+  UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
+  DarwinBootPkg/Driver/DarwinBoot.inf
+  nuwaPkg/Drivers/NuwaBootMemoryDxe/NuwaBootMemoryDxe.inf
+
   #
   # ACPI Tables
   #
