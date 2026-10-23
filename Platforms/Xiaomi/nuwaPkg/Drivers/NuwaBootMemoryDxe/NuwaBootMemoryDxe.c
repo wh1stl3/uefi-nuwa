@@ -20,6 +20,11 @@
 
 #include "NuwaVolume.h"
 
+// A diagnostic build may hold the final checkpoint for a bounded recording window.
+#ifndef NUWA_VOLUME_DIAGNOSTIC_PAUSE_US
+#define NUWA_VOLUME_DIAGNOSTIC_PAUSE_US  0
+#endif
+
 STATIC
 BOOLEAN
 ReservedKernelRange (UINT64 Start, UINT64 Length)
@@ -164,7 +169,7 @@ STATIC EFI_BLOCK_IO_PROTOCOL  mBlockIo = {
 };
 
 STATIC
-VOID
+EFI_STATUS
 PublishInitrd (
   IN CONST VOID  *Fdt
   )
@@ -173,8 +178,8 @@ PublishInitrd (
   INT32       Chosen;
   CONST VOID  *StartProp;
   CONST VOID  *EndProp;
-  INT32       StartLength;
-  INT32       EndLength;
+  INT32       StartLength = 0;
+  INT32       EndLength = 0;
   UINT64      Start;
   UINT64      End;
   EFI_HANDLE  Handle;
@@ -184,8 +189,8 @@ PublishInitrd (
 
   Chosen = FdtPathOffset (Fdt, "/chosen");
   if (Chosen < 0) {
-    DEBUG ((DEBUG_ERROR, "SHENGMEM: no /chosen\n"));
-    return;
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] no /chosen\n"));
+    return EFI_NOT_FOUND;
   }
 
   StartProp = FdtGetProp (Fdt, Chosen, "linux,initrd-start", &StartLength);
@@ -193,8 +198,8 @@ PublishInitrd (
   if ((StartProp == NULL) || (EndProp == NULL) ||
       ((StartLength != 4) && (StartLength != 8)) || ((EndLength != 4) && (EndLength != 8)))
   {
-    DEBUG ((DEBUG_ERROR, "SHENGMEM: no initrd in /chosen\n"));
-    return;
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] missing or malformed initrd properties start-len=%d end-len=%d\n", StartLength, EndLength));
+    return EFI_INVALID_PARAMETER;
   }
 
   Start = ReadCells (StartProp, StartLength / 4);
@@ -202,14 +207,14 @@ PublishInitrd (
   DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] chosen start=0x%lx end=0x%lx\n", Start, End));
   if ((End <= Start) || !ReservedKernelRange (Start, End - Start)) {
     DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] rejected initrd extent\n"));
-    return;
+    return EFI_ACCESS_DENIED;
   }
   VolumeResult = NuwaFindVolume ((CONST UINT8 *)(UINTN)Start, (UINTN)(End - Start),
                                 VolumeCrc, &VolumeOffset, &VolumeSize);
   DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] envelope result=%u offset=0x%lx bytes=0x%lx\n",
           (UINT32)VolumeResult, (UINT64)VolumeOffset, (UINT64)VolumeSize));
   if (VolumeResult != NuwaVolumeFound) {
-    return;
+    return (VolumeResult == NuwaVolumeAbsent) ? EFI_NOT_FOUND : EFI_COMPROMISED_DATA;
   }
   // Kernel is already mapped and reserved by the unchanged platform memory map.
   // Keep the source reserved; publish just the validated subrange, read-only.
@@ -236,6 +241,47 @@ PublishInitrd (
                   NULL
                   );
   DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] block device 0x%lx size 0x%lx %r\n", Start, End - Start, Status));
+  return Status;
+}
+
+STATIC
+EFI_STATUS
+DiscoverInitrd (VOID)
+{
+  EFI_HOB_GUID_TYPE  *Hob;
+  UINT64             Dtb;
+
+  Hob = GetFirstGuidHob (&gSiliciumEntryArgHobGuid);
+  if ((Hob == NULL) || (GET_GUID_HOB_DATA_SIZE (Hob) < sizeof (UINT64))) {
+    DEBUG ((DEBUG_ERROR, "SHENGMEM: no entry argument HOB\n"));
+    return EFI_NOT_FOUND;
+  }
+
+  Dtb = ReadUnaligned64 (GET_GUID_HOB_DATA (Hob));
+  DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] entry dtb=0x%lx\n", Dtb));
+  if ((Dtb == 0) || ((Dtb & 3) != 0)) {
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] invalid dtb pointer\n"));
+    return EFI_INVALID_PARAMETER;
+  }
+  // Check the mapping before touching the FDT header, then bound its whole extent.
+  if (!ReservedKernelRange (Dtb, 40)) {
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] dtb header outside reserved Kernel map\n"));
+    return EFI_ACCESS_DENIED;
+  }
+  if ((FdtCheckHeader ((VOID *)(UINTN)Dtb) != 0) ||
+      (FdtTotalSize ((VOID *)(UINTN)Dtb) < 40)) {
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] malformed dtb header\n"));
+    return EFI_COMPROMISED_DATA;
+  }
+  if (!ReservedKernelRange (Dtb, FdtTotalSize ((VOID *)(UINTN)Dtb))) {
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] dtb extent outside reserved Kernel map bytes=0x%x\n",
+            (UINT32)FdtTotalSize ((VOID *)(UINTN)Dtb)));
+    return EFI_ACCESS_DENIED;
+  }
+
+  DEBUG ((DEBUG_ERROR, "SHENGMEM: device tree at 0x%lx, %u bytes\n", Dtb, (UINT32)FdtTotalSize ((VOID *)(UINTN)Dtb)));
+
+  return PublishInitrd ((VOID *)(UINTN)Dtb);
 }
 
 EFI_STATUS
@@ -245,26 +291,14 @@ NuwaBootMemoryDxeEntry (
   IN EFI_SYSTEM_TABLE  *SystemTable
   )
 {
-  EFI_HOB_GUID_TYPE  *Hob;
-  UINT64             Dtb;
+  EFI_STATUS Status;
 
-  Hob = GetFirstGuidHob (&gSiliciumEntryArgHobGuid);
-  if ((Hob == NULL) || (GET_GUID_HOB_DATA_SIZE (Hob) < sizeof (UINT64))) {
-    DEBUG ((DEBUG_ERROR, "SHENGMEM: no entry argument HOB\n"));
-    return EFI_SUCCESS;
-  }
-
-  Dtb = ReadUnaligned64 (GET_GUID_HOB_DATA (Hob));
-  if ((Dtb == 0) || ((Dtb & 3) != 0) || !ReservedKernelRange (Dtb, 40) ||
-      (FdtCheckHeader ((VOID *)(UINTN)Dtb) != 0) ||
-      (FdtTotalSize ((VOID *)(UINTN)Dtb) < 40) ||
-      !ReservedKernelRange (Dtb, FdtTotalSize ((VOID *)(UINTN)Dtb))) {
-    DEBUG ((DEBUG_ERROR, "SHENGMEM: x0 0x%lx is not a device tree\n", Dtb));
-    return EFI_SUCCESS;
-  }
-
-  DEBUG ((DEBUG_ERROR, "SHENGMEM: device tree at 0x%lx, %u bytes\n", Dtb, (UINT32)FdtTotalSize ((VOID *)(UINTN)Dtb)));
-
-  PublishInitrd ((VOID *)(UINTN)Dtb);
-  return EFI_SUCCESS;
+  DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] publisher enter\n"));
+  Status = DiscoverInitrd ();
+  DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] publisher exit status=%r\n", Status));
+#if NUWA_VOLUME_DIAGNOSTIC_PAUSE_US > 0
+  // This hold is opt-in in the separate diagnostic profile, never the normal build.
+  gBS->Stall (NUWA_VOLUME_DIAGNOSTIC_PAUSE_US);
+#endif
+  return Status;
 }

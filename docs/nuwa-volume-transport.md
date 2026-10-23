@@ -39,3 +39,23 @@ Runtime checkpoints are `[NUWA-VOLUME] chosen`, `envelope result`, and
 `block device ... Success`. Result 0 means absent, 1 found, 2 invalid, 3 duplicate.
 The first device payload should be a configuration-only FAT probe. A probe menu
 is volume-discovery evidence, not XNU execution.
+
+## Publisher failure status
+
+The publisher now returns its actual failure to the DXE dispatcher. Missing HOB,
+chosen node or envelope returns EFI_NOT_FOUND; invalid pointer/property encoding
+returns EFI_INVALID_PARAMETER; an extent outside the unchanged reserved Kernel
+map returns EFI_ACCESS_DENIED; malformed FDT/envelope returns
+EFI_COMPROMISED_DATA. Protocol-install status is propagated unchanged.
+Each rejection logs its stage, with entry DTB and chosen bounds when available.
+
+The normal build has no delay. An explicitly selected diagnostic build can set
+NUWA_VOLUME_DIAGNOSTIC_PAUSE_US to 5000000 to hold the final debug checkpoint
+for five seconds before returning to DXE. This needs a fresh recording gate
+before any device trial and does not establish a reliable display channel.
+
+`python3 -B -m unittest discover -s tests -v` compiles both the actual parser
+and publisher with host doubles and UBSan. Publisher checks include rejecting
+unmapped FDT pointers before any header read, malformed/absent input, rejected
+initrd bounds before CRC, successful read-only publication, and propagation of
+protocol-install failure. These are host checks, not device execution.
