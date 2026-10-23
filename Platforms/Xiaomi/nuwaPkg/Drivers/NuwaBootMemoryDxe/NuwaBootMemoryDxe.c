@@ -2,10 +2,9 @@
 /** @file
   Read-only initrd block publisher, adapted from pinned ShengBootMemoryDxe.
 
-  nuwa candidate: keep the existing /chosen initrd and BlockIo implementation;
-  remove the sheng DRAM discovery/GCD extension policy. RamManagerDxe remains
-  the firmware memory manager. Mapping, reservation lifetime and ABL handoff
-  still require nuwa runtime evidence before any boot is accepted.
+  Publish only a bounded, checksummed NUWA volume from the ABL initrd extent.
+  The full FDT and initrd must lie in the existing reserved Kernel map region.
+  No DRAM expansion or guessed Android addresses; no raw-initrd fallback.
 **/
 
 #include <Uefi.h>
@@ -14,9 +13,46 @@
 #include <Library/DebugLib.h>
 #include <Library/FdtLib.h>
 #include <Library/HobLib.h>
+#include <Library/MemoryMapLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/DevicePath.h>
+
+#include "NuwaVolume.h"
+
+STATIC
+BOOLEAN
+ReservedKernelRange (UINT64 Start, UINT64 Length)
+{
+  EFI_MEMORY_REGION_DESCRIPTOR *Map;
+  UINT8 Count;
+  UINTN Index;
+
+  if ((Length == 0) || (Start > MAX_UINTN) || (Length > MAX_UINTN - Start)) {
+    return FALSE;
+  }
+  GetMemoryMap (&Map, &Count);
+  for (Index = 0; Index < Count; Index++) {
+    if ((AsciiStrCmp (Map[Index].Name, "Kernel") == 0) &&
+        (Map[Index].HobOption == AddMem) &&
+        (Map[Index].ResourceType == EFI_RESOURCE_SYSTEM_MEMORY) &&
+        (Map[Index].MemoryType == EfiReservedMemoryType) &&
+        (Map[Index].ArmAttributes == ARM_MEMORY_REGION_ATTRIBUTE_WRITE_BACK) &&
+        (Start >= Map[Index].Address) &&
+        (Start - Map[Index].Address < Map[Index].Length) &&
+        (Length <= Map[Index].Length - (Start - Map[Index].Address))) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+STATIC
+BOOLEAN
+VolumeCrc (CONST UINT8 *Data, UINTN Size, UINT32 *Result)
+{
+  return !EFI_ERROR (gBS->CalculateCrc32 ((VOID *)Data, Size, Result));
+}
 
 STATIC
 UINT64
@@ -142,6 +178,9 @@ PublishInitrd (
   UINT64      Start;
   UINT64      End;
   EFI_HANDLE  Handle;
+  UINTN       VolumeOffset;
+  UINTN       VolumeSize;
+  NUWA_VOLUME_RESULT VolumeResult;
 
   Chosen = FdtPathOffset (Fdt, "/chosen");
   if (Chosen < 0) {
@@ -160,11 +199,22 @@ PublishInitrd (
 
   Start = ReadCells (StartProp, StartLength / 4);
   End   = ReadCells (EndProp, EndLength / 4);
-  if ((End <= Start) || (((End - Start) % RAM_BLOCK_SIZE) != 0)) {
-    DEBUG ((DEBUG_ERROR, "SHENGMEM: initrd 0x%lx-0x%lx is not a whole number of sectors\n", Start, End));
+  DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] chosen start=0x%lx end=0x%lx\n", Start, End));
+  if ((End <= Start) || !ReservedKernelRange (Start, End - Start)) {
+    DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] rejected initrd extent\n"));
     return;
   }
-
+  VolumeResult = NuwaFindVolume ((CONST UINT8 *)(UINTN)Start, (UINTN)(End - Start),
+                                VolumeCrc, &VolumeOffset, &VolumeSize);
+  DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] envelope result=%u offset=0x%lx bytes=0x%lx\n",
+          (UINT32)VolumeResult, (UINT64)VolumeOffset, (UINT64)VolumeSize));
+  if (VolumeResult != NuwaVolumeFound) {
+    return;
+  }
+  // Kernel is already mapped and reserved by the unchanged platform memory map.
+  // Keep the source reserved; publish just the validated subrange, read-only.
+  Start += VolumeOffset;
+  End = Start + VolumeSize;
   mRamBase                = (UINT8 *)(UINTN)Start;
   mMedia.MediaId          = 1;
   mMedia.RemovableMedia   = FALSE;
@@ -185,7 +235,7 @@ PublishInitrd (
                   &mBlockIo,
                   NULL
                   );
-  DEBUG ((DEBUG_ERROR, "SHENGMEM: initrd block device 0x%lx size 0x%lx %r\n", Start, End - Start, Status));
+  DEBUG ((DEBUG_ERROR, "[NUWA-VOLUME] block device 0x%lx size 0x%lx %r\n", Start, End - Start, Status));
 }
 
 EFI_STATUS
@@ -205,7 +255,10 @@ NuwaBootMemoryDxeEntry (
   }
 
   Dtb = ReadUnaligned64 (GET_GUID_HOB_DATA (Hob));
-  if ((Dtb == 0) || ((Dtb & 3) != 0) || (FdtCheckHeader ((VOID *)(UINTN)Dtb) != 0)) {
+  if ((Dtb == 0) || ((Dtb & 3) != 0) || !ReservedKernelRange (Dtb, 40) ||
+      (FdtCheckHeader ((VOID *)(UINTN)Dtb) != 0) ||
+      (FdtTotalSize ((VOID *)(UINTN)Dtb) < 40) ||
+      !ReservedKernelRange (Dtb, FdtTotalSize ((VOID *)(UINTN)Dtb))) {
     DEBUG ((DEBUG_ERROR, "SHENGMEM: x0 0x%lx is not a device tree\n", Dtb));
     return EFI_SUCCESS;
   }
