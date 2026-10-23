@@ -59,3 +59,20 @@ and publisher with host doubles and UBSan. Publisher checks include rejecting
 unmapped FDT pointers before any header read, malformed/absent input, rejected
 initrd bounds before CRC, successful read-only publication, and propagation of
 protocol-install failure. These are host checks, not device execution.
+
+## Embedded configuration probe (separate profile)
+
+NuwaEmbeddedVolumeDxe is an opt-in diagnostic module, not included by the normal
+nuwa DSC/FDF. It reads RAW file 3F056471-ED81-4B72-B150-F0326E391286 from the FV
+using DxeServicesLib. The exact 4MiB FAT16 resource (SHA256
+c097413db551aac705e530cef697fdbc54ae9a9c4ea8ae86be175ba5bdd15796)
+has only EFI/UniXNU/unixnu.toml and an exit action. Size, boot signature and
+CRC32 54fe5070 are checked before read-only BlockIo publication. Failed reads,
+invalid resources and protocol-install failure do not retain a buffer; successful
+publication retains the boot-services pool until firmware exits boot services.
+The BlockIo callbacks are reused from this repository's BSD-2-Clause publisher.
+
+This verifies a separate FAT/config discovery route without relying on ABL
+passing the downloaded boot v4 ramdisk through chosen. It does not solve transport
+of a full XNU payload. Decompressed FV and pool use increase; complete build and
+hardware behavior remain unverified. No map, address or verification flag changes.
