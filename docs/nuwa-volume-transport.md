@@ -74,5 +74,8 @@ The BlockIo callbacks are reused from this repository's BSD-2-Clause publisher.
 
 This verifies a separate FAT/config discovery route without relying on ABL
 passing the downloaded boot v4 ramdisk through chosen. It does not solve transport
-of a full XNU payload. Decompressed FV and pool use increase; complete build and
-hardware behavior remain unverified. No map, address or verification flag changes.
+of a full XNU payload. Decompressed FV and pool use increase; complete build and hardware behavior were unverified at the time of this implementation note. No map, address or verification flag changes.
+
+## Subsequent evidence (2026-10-24)
+
+The87b14624 embedded-probe trial produced photographed publication Success and the unique configuration menu; this validates the small configuration discovery route on that trial. The later26ef8efd cache candidate has a user text report of reaching the menu, with raw cache-stage images pending. Both trials recovered Android with unchanged three boot-partition hashes. Neither carries or executes XNU/ADT, and neither qualifies full-payload transport. See the device repository current STATUS and mainline handoff linked in nuwa-unixnu.md.
