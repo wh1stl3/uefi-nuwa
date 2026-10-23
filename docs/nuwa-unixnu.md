@@ -10,8 +10,8 @@ Inherited Actions are disabled to prevent image generation during source provisi
 
 ## Current integration status (2026-10-24)
 
-The device repository is the authority for candidate patches and trial evidence. CI40005057158 built fixed firmware6176a822e66b846620b5bcd2739a0666814ee663 plus the device-owned diagnostic patch chain including0019. The cache candidate image is26ef8efdc034f726df23f7bb2998d9e980e52e706e914ba9a415ca088dba2051. This documentation update does not change that source pin or promote candidate patches into normal firmware.
+The device repository is the authority for candidate patches and trial evidence. CI40005057158 built fixed firmware 6176a822e66b846620b5bcd2739a0666814ee663 plus the device-owned diagnostic patch chain including 0019. The cache candidate image is 26ef8efdc034f726df23f7bb2998d9e980e52e706e914ba9a415ca088dba2051. This documentation update does not change that source pin or promote candidate patches into normal firmware.
 
 After a fresh recording confirmation and a single temporary boot, the user reported reaching the UniXNU menu. Android recovery completed with boot_completed=1 and unchanged boot_a/vendor_boot_a/init_boot_a SHA256. Cache-marker/after-mmu images have not been received; root cause, repeatability and XNU/iOS execution remain unverified. Heap, memory-map values and bad-entry protection were retained. No flash, erase or slot change occurred.
 
-See the [current device handoff](https://github.com/wh1stl3/UniXNU-nuwa/blob/main/docs/operations/2026-10-23-mainline-handoff.md) and [trial record at747d8fc](https://github.com/wh1stl3/UniXNU-nuwa/blob/747d8fcc7368778a4af6ff49bf3d845e5154cf2e/docs/operations/2026-10-24-hob-cache-handoff-trial.md). Do not reuse old preflight files or recording consent for another boot.
+See the [current device handoff](https://github.com/wh1stl3/UniXNU-nuwa/blob/main/docs/operations/2026-10-23-mainline-handoff.md) and [trial record at 747d8fc](https://github.com/wh1stl3/UniXNU-nuwa/blob/747d8fcc7368778a4af6ff49bf3d845e5154cf2e/docs/operations/2026-10-24-hob-cache-handoff-trial.md). Do not reuse old preflight files or recording consent for another boot.

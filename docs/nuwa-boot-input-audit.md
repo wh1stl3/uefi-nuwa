@@ -22,4 +22,4 @@ register reads or real memory ownership.
 
 ## Execution status (2026-10-24)
 
-Thea2dc8195 input-audit trial stopped at an early HOB check, before this ReadyToBoot callback. The subsequent2273bdec trial localized the first observed failure to after-mmu. Cache candidate26ef8efd now has a user report of the UniXNU menu, but no ReadyToBoot dump or allocation proof has been received. These later observations do not qualify an OS memory window. Candidate and trial evidence remain in the device repository; see nuwa-unixnu.md for the current handoff.
+The a2dc8195 input-audit trial stopped at an early HOB check, before this ReadyToBoot callback. The subsequent 2273bdec trial localized the first observed failure to after-mmu. Cache candidate 26ef8efd now has a user report of the UniXNU menu, but no ReadyToBoot dump or allocation proof has been received. These later observations do not qualify an OS memory window. Candidate and trial evidence remain in the device repository; see nuwa-unixnu.md for the current handoff.
