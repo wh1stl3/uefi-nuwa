@@ -131,12 +131,18 @@ SecMain (VOID)
   // Linux-style boot loader), so a DXE driver can use it.
   {
     UINT64  EntryArg = gSecEntryArg0;
+    VOID    *EntryArgHob;
 
-    BuildGuidDataHob (&gSiliciumEntryArgHobGuid, &EntryArg, sizeof (EntryArg));
+    DEBUG ((EFI_D_ERROR, "[NUWA-HANDOFF] before-entry-arg-hob list=%p\n", GetHobList ()));
+    EntryArgHob = BuildGuidDataHob (&gSiliciumEntryArgHobGuid, &EntryArg, sizeof (EntryArg));
+    (VOID)EntryArgHob;
+    DEBUG ((EFI_D_ERROR, "[NUWA-HANDOFF] after-entry-arg-hob data=%p\n", EntryArgHob));
   }
 
   // Run Library Cconstructors
+  DEBUG ((EFI_D_ERROR, "[NUWA-HANDOFF] before-library-constructors\n"));
   ProcessLibraryConstructorList ();
+  DEBUG ((EFI_D_ERROR, "[NUWA-HANDOFF] after-library-constructors\n"));
 
   // Decompress all FVs
   NUWA_ENTRY_TRACE ("before-fv-decompress");
