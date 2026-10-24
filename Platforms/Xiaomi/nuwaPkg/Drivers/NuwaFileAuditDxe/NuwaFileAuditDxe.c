@@ -113,7 +113,7 @@ STATIC EFI_STATUS AuditVolumes (VOID) {
   Status = ReadAndHash (Selected);
 Done:
   if (Selected != NULL) { Selected->Close (Selected); }
-  FreePool (Handles);
+  if (Handles != NULL) { FreePool (Handles); }
   return Status;
 }
 

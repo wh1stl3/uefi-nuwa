@@ -28,7 +28,7 @@ visibility, actual library linkage and nuwa file verification require artifact
 inspection and a separately captured device trial.
 
 Offline evidence in the device repository: tests/fv_file_audit_host.cpp compiles
-the actual C source into an AArch64 software protocol fixture. Eighteen
+the actual C source into an AArch64 software protocol fixture. Nineteen
 file/volume/crypto cases and a one-shot callback case passed with balanced pool
 and file cleanup. The fixture's crypto callback uses the previously pinned
 NativeAdreno SHA implementation; the target firmware instead links its existing
