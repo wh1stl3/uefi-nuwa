@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: BSD-2-Clause
+[Defines]
+  INF_VERSION = 0x0001001B
+  BASE_NAME = NuwaFileAuditDxe
+  FILE_GUID = 45B28639-79A9-456D-AFC5-EDCFE78CDAE1
+  MODULE_TYPE = DXE_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT = NuwaFileAuditDxeEntry
+[Sources]
+  NuwaFileAuditDxe.c
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  CryptoPkg/CryptoPkg.dec
+[LibraryClasses]
+  BaseCryptLib
+  BaseMemoryLib
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+  UefiLib
+[Guids]
+  gEfiEventReadyToBootGuid
+  gEfiFileInfoGuid
+[Protocols]
+  gEfiSimpleFileSystemProtocolGuid
+[Depex]
+  TRUE
