@@ -1,44 +1,20 @@
-# Agent instructions
+# Agent instructions — uefi-nuwa
 
-## Responsibility
+## 治理规则（必读）
+1. 长期规则：`../../docs/governance-2026-11-06.md`（11 条：官方优先/两仓制/结构/流程/上游同步/脱敏/媒体/Apple 合规/验证精简/WSL 优先/磁盘治理）。
+2. AI 分工：`../../docs/ai-orchestration-2026-11-06.md`。
+3. nuwa 路线背景：`../../docs/nuwa-ios17-sheng-migration-2026-11-06.md`。
 
-Maintain sheng UEFI integration, memory reservations, platform initialization,
-firmware packaging, and hardware handoff.
+## 职责
+维护 nuwa（SM8550）的 Mu-Silicium UEFI 集成：内存保留、平台初始化、固件打包、硬件交接。
+本仓派生自 UniXNU/uefi-sheng@66421cb（2026-11-06）；sheng 的板级值仅作同 SoC 参考，禁止照抄（MMIO/IRQ/面板/电源须 nuwa 证据）。
 
-## Required reading
+## 必读（官方文档）
+1. README.md、Building.md、`Platforms/Xiaomi/shengPkg/PORTING.md`（作为 nuwaPkg 结构参考）。
+2. [firmware integration](https://unixnu.com/porting/uefi-firmware)、[SM8550](https://unixnu.com/porting/sm8550)、[porting](https://unixnu.com/porting/)、[repository specification](https://unixnu.com/porting/device-repository)、[component catalog](https://unixnu.com/reference/components)、[device-tree specification](https://unixnu.com/porting/device-tree)。
+3. 所选组件的 README、构建接口与实现；[payload](https://unixnu.com/concepts/payload)、[building](https://unixnu.com/building)。
 
-1. Read README.md, Building.md, and Platforms/Xiaomi/shengPkg/PORTING.md.
-2. Read [firmware integration](https://unixnu.com/porting/uefi-firmware),
-   [sheng](https://unixnu.com/devices/sheng), and
-   [SM8550](https://unixnu.com/porting/sm8550).
-3. Read [porting](https://unixnu.com/porting/), the
-   [repository specification](https://unixnu.com/porting/device-repository),
-   [component catalog](https://unixnu.com/reference/components), and
-   [device-tree specification](https://unixnu.com/porting/device-tree).
-4. Read the selected component README, build interface, and implementation.
-5. Read [payload](https://unixnu.com/concepts/payload),
-   [building](https://unixnu.com/building), and
-   [bring-up](https://unixnu.com/porting/bring-up) before image assembly.
-6. Read the [migration guide](https://unixnu.com/porting/migration) for migration.
-
-## Implementation
-
-Inspect existing SoC support and catalog components before adding code.
-Keep common SM8550 operations in shared support and sheng peripheral policy
-in this repository or UniXNU-sheng, according to the execution stage.
-Preserve protocol GUIDs, runtime identifiers, and firmware filenames.
-Maintain the documentation site in UniXNU and link its relevant pages here.
-
-## Verification
-
-Build with the selected UniXNU device and OS profiles using Building.md.
-Run existing firmware checks. Report build commands, revisions, required
-inputs, and results. Record hardware boot and peripheral observations with
-the device and firmware configuration.
-
-## Device porting record
-
-The firmware section of [sheng's porting record](https://unixnu.com/devices/sheng#firmware)
-records handoff inputs, development findings, evidence and completion criteria.
-Update `UniXNU-sheng/porting.toml` when firmware work changes those inputs or
-results. Maintainers and agents use the [same workflow](https://unixnu.com/porting/records).
+## 硬边界
+- 禁止提交 OEM 二进制、设备标识符、生成镜像；vendor 输入放 `.cache/firmware/` 不入库（治理 §6/§7）。
+- 内存大小/基址修改与 `*_verified=true` 须用户当轮确认。
+- 提交格式 `[uefi-nuwa][<area>]` + Change/Evidence/Risk；不 force push（main 已设保护）。
