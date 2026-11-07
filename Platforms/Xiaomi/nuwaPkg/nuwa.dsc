@@ -102,3 +102,39 @@
   HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
   AdvancedLoggerAccessLib|AdvLoggerPkg/Library/AdvancedLoggerAccessLib/AdvancedLoggerAccessLib.inf
   QrEncoderLib|MsGraphicsPkg/Library/QrEncoderLib/QrEncoderLib.inf
+
+  #
+  # Advanced Logger: the DXE_CORE AdvancedLoggerLib instance installs
+  # gAdvancedLoggerProtocolGuid, which is the producer AdvancedLogDxe's Depex needs.
+  # PcdAdvancedLoggerBase stays 0 (default), so the DXE_CORE library reserves its 4 MiB
+  # buffer with AllocateReservedPages instead of a fixed physical address.
+  # AdvancedLoggerHdwPortLib routes the hardware port through SerialPortLib
+  # (FrameBufferSerialPortLib in DEBUG), preserving screen output alongside the buffer.
+  #
+  AssertLib|AdvLoggerPkg/Library/AssertLib/AssertLib.inf
+  AdvancedLoggerHdwPortLib|AdvLoggerPkg/Library/AdvancedLoggerHdwPortLib/AdvancedLoggerHdwPortLib.inf
+!if $(TARGET) == DEBUG
+  DebugLib|AdvLoggerPkg/Library/BaseDebugLibAdvancedLogger/BaseDebugLibAdvancedLogger.inf
+!endif
+
+[LibraryClasses.common.SEC]
+  # Sec.c calls BaseDebugLibSerialPortConstructor() directly, so the SEC phase keeps
+  # the serial DebugLib (screen output) and does not take the AdvancedLogger DebugLib.
+  !if $(TARGET) == DEBUG
+  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+  !endif
+
+[LibraryClasses.common.DXE_CORE]
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/DxeCore/AdvancedLoggerLib.inf
+
+[LibraryClasses.common.DXE_DRIVER]
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Dxe/AdvancedLoggerLib.inf
+
+[LibraryClasses.common.UEFI_DRIVER]
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Dxe/AdvancedLoggerLib.inf
+
+[LibraryClasses.common.UEFI_APPLICATION]
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Dxe/AdvancedLoggerLib.inf
+
+[LibraryClasses.common.DXE_RUNTIME_DRIVER]
+  AdvancedLoggerLib|AdvLoggerPkg/Library/AdvancedLoggerLib/Runtime/AdvancedLoggerLib.inf
