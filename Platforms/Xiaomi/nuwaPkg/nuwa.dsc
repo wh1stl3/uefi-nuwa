@@ -66,6 +66,11 @@
   #
   gQcomPkgTokenSpaceGuid.PcdPlatformType|"LA"
 
+  #
+  # UniXNU
+  #
+  gUniXNUPkgTokenSpaceGuid.PcdUniXNUDeviceModel|"nuwa"
+
 [LibraryClasses]
   #
   # Memory Libraries
@@ -79,6 +84,21 @@
 
 [Components]
   #
-  # ACPI Tables
+  # UniXNU firmware integration (required: porting/uefi-firmware#required-integration)
   #
-  #nuwa/AcpiTables.inf
+  UniXNUPkg/Application/UniXNU/UniXNU.inf
+  UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
+  UniXNUPkg/Driver/UniXNURamDiskDxe/UniXNURamDiskDxe.inf
+  DarwinBootPkg/Driver/DarwinBoot.inf
+  UniXNUPkg/Driver/AdvancedLogDxe/AdvancedLogDxe.inf
+
+[LibraryClasses]
+  #
+  # UniXNU shared libraries (HobLib/FdtLib already mapped in SiliciumPkg.dsc.inc;
+  # re-stated here as the required integration block).
+  #
+  UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
+  FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf
+  HobLib|MdePkg/Library/DxeHobLib/DxeHobLib.inf
+  AdvancedLoggerAccessLib|AdvLoggerPkg/Library/AdvancedLoggerAccessLib/AdvancedLoggerAccessLib.inf
+  QrEncoderLib|MsGraphicsPkg/Library/QrEncoderLib/QrEncoderLib.inf
